@@ -3,7 +3,7 @@
 
 Aplicación interactiva en Streamlit para explorar el universo de Rick & Morty a partir de un CSV local con 826 personajes.
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://TU-URL-DE-STREAMLIT)
+[![Streamlit App](https://rick-y-morty-api-dgysi6ggaeeszebqbgjjzd.streamlit.app/)]
 
 ## Demo
 
