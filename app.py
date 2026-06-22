@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+from streamlit_autorefresh import st_autorefresh
 
 
 st.set_page_config(page_title="Rick and Morty Word",page_icon=":🛸:", layout = "wide")
@@ -103,7 +104,7 @@ with col1:
         species_count,
         x="Species",
         y="Count",
-        title="Top 10 Species"
+        title="Top 10 especioes"
     )
 
     st.plotly_chart(
@@ -122,11 +123,16 @@ with col2:
     status_count.columns = ["Status", "Count"]
 
     fig_status = px.pie(
-        status_count,
-        names="Status",
-        values="Count",
-        title="Character Status"
-    )
+    status_count,
+    names="Status",
+    values="Count",
+    color="Status",
+    color_discrete_map={
+        "Alive": "green",
+        "Dead": "red",
+        "unknown": "black"
+    }
+)
 
     st.plotly_chart(
         fig_status,
@@ -145,7 +151,7 @@ fig_gender = px.bar(
     gender_count,
     x="Gender",
     y="Count",
-    title="Gender Distribution",
+    title="Distribución de géneros",
     color="Gender"
 )
 
@@ -157,7 +163,7 @@ st.plotly_chart(
 st.divider()
 
 
-st.subheader("🔍 Character Explorer")
+st.subheader("🔍 Explorador de personajes")
 
 character = st.selectbox(
     "Choose a character",
