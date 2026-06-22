@@ -1,205 +1,223 @@
 import streamlit as st
-from pathlib import Path
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
-from streamlit_autorefresh import st_autorefresh
 
-
-st.set_page_config(page_title="Rick and Morty Word",page_icon=":🛸:", layout = "wide")
-st.title("Rick and Morty World 🛸")
-st.write("Bienvenido al mundo de Rick y Morty, aqui podrás ver la información de todos los personajes del mundo de Rick y Morty.")
+st.set_page_config(
+    page_title="Rick y Morty Dex | Rick & Morty Dashboard",
+    page_icon="🛸",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 @st.cache_data
-def cargar():
-    return pd.read_csv(Path(__file__).parent / "rick_and_morty_characters.csv")
+def load_data():
+    df = pd.read_csv("rick_and_morty_characters.csv")
+    for c in ["status", "species", "gender", "origin", "location", "name", "type"]:
+        if c in df.columns:
+            df[c] = df[c].fillna("unknown")
+    if "n_episodes" not in df.columns and "episode" in df.columns:
+        df["n_episodes"] = 0
+    return df
 
-df = cargar ()
+df = load_data()
 
-
-st.sidebar.title("🛸 Rick & Morty 🛸")
-
-species_filter = st.sidebar.multiselect(
-    "Species",
-    options=sorted(df["species"].dropna().unique()),
-    default=[]
-)
-
-status_filter = st.sidebar.multiselect(
-    "Status",
-    options=sorted(df["status"].dropna().unique()),
-    default=[]
-)
-
-gender_filter = st.sidebar.multiselect(
-    "Gender",
-    options=sorted(df["gender"].dropna().unique()),
-    default=[]
-)
-filtered_df = df.copy()
-
-if species_filter:
-    filtered_df = filtered_df[
-        filtered_df["species"].isin(species_filter)
-    ]
-
-if status_filter:
-    filtered_df = filtered_df[
-        filtered_df["status"].isin(status_filter)
-    ]
-
-if gender_filter:
-    filtered_df = filtered_df[
-        filtered_df["gender"].isin(gender_filter)
-    ]
-
-st.title("🛸 Rick & Morty Análisis de personaje 🛸")
+def badge_class(v):
+    v = str(v).lower()
+    if v == "alive":
+        return "alive"
+    if v == "dead":
+        return "dead"
+    return "unknown"
 
 st.markdown("""
-Exploración interactiva de personajes del universo Rick & Morty.
-""")
+<div class="hero">
+    <h1> 🛸Rick y Morty Dex🛸<h1>
+    <p>Dashboard interactivo de Rick & Morty con exploración visual, filtros avanzados y ficha detallada.</p>
+</div>
+""", unsafe_allow_html=True)
 
-col1, col2, col3, col4 = st.columns(4)
+with st.sidebar:
+    st.markdown("## 🔎 Filtros")
+    species_options = sorted(df["species"].dropna().unique())
+    status_options = sorted(df["status"].dropna().unique())
+    gender_options = sorted(df["gender"].dropna().unique())
 
-with col1:
-    st.metric(
-        "Total Characters",
-        len(filtered_df)
-    )
+    selected_species = st.multiselect("Especie", species_options)
+    selected_status = st.multiselect("Estado", status_options)
+    selected_gender = st.multiselect("Género", gender_options)
+    search_name = st.text_input("Buscar por nombre")
 
-with col2:
-    st.metric(
-        "Species",
-        filtered_df["species"].nunique()
-    )
+    st.markdown("---")
+    st.caption("Tip: combina filtros para encontrar personajes concretos.")
 
-with col3:
-    st.metric(
-        "Origins",
-        filtered_df["origin"].nunique()
-    )
+filtered = df.copy()
 
-with col4:
-    st.metric(
-        "Locations",
-        filtered_df["location"].nunique()
-    )
+if selected_species:
+    filtered = filtered[filtered["species"].isin(selected_species)]
+if selected_status:
+    filtered = filtered[filtered["status"].isin(selected_status)]
+if selected_gender:
+    filtered = filtered[filtered["gender"].isin(selected_gender)]
+if search_name:
+    filtered = filtered[filtered["name"].str.contains(search_name, case=False, na=False)]
 
-st.divider()
+total = len(filtered)
+species_count = filtered["species"].nunique()
+alive_pct = filtered["status"].eq("Alive").mean() * 100 if total else 0
+dead_pct = filtered["status"].eq("Dead").mean() * 100 if total else 0
 
-col1, col2 = st.columns(2)
+st.write("")
+k1, k2, k3, k4 = st.columns(4)
+with k1:
+    st.markdown(f"""
+    <div class="kpi">
+        <div class="kpi-title">Personajes</div>
+        <div class="kpi-value">{total}</div>
+        <div class="kpi-sub">Resultados visibles</div>
+    </div>
+    """, unsafe_allow_html=True)
+with k2:
+    st.markdown(f"""
+    <div class="kpi">
+        <div class="kpi-title">Especies distintas</div>
+        <div class="kpi-value">{species_count}</div>
+        <div class="kpi-sub">Diversidad biológica</div>
+    </div>
+    """, unsafe_allow_html=True)
+with k3:
+    st.markdown(f"""
+    <div class="kpi">
+        <div class="kpi-title">% vivos</div>
+        <div class="kpi-value">{alive_pct:.1f}%</div>
+        <div class="kpi-sub">Sobre el subconjunto filtrado</div>
+    </div>
+    """, unsafe_allow_html=True)
+with k4:
+    st.markdown(f"""
+    <div class="kpi">
+        <div class="kpi-title">% muertos</div>
+        <div class="kpi-value">{dead_pct:.1f}%</div>
+        <div class="kpi-sub">Sobre el subconjunto filtrado</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-with col1:
+st.write("")
+tab1, tab2, tab3, tab4 = st.tabs(["🏠 Portada", "🖼️ Galería", "📊 Análisis", "👤 Ficha"])
 
-    species_count = (
-        filtered_df["species"]
-        .value_counts()
-        .head(10)
-        .reset_index()
-    )
+with tab1:
+    c1, c2 = st.columns([1.25, 1])
+    with c1:
+        st.markdown('<div class="section-title">Resumen ejecutivo</div>', unsafe_allow_html=True)
+        st.write("Este panel resume el universo de personajes filtrado por especie, estado, género y búsqueda por nombre.")
+        st.write("La app está diseñada para que parezca un proyecto de portfolio: limpieza visual, jerarquía clara y componentes reutilizables.")
+        st.write("Todo se alimenta del CSV local, sin llamar a la API al abrir la app.")
+   
+with c2:
+    status_dist = filtered["status"].value_counts().reset_index()
+    status_dist.columns = ["status", "count"]
 
-    species_count.columns = ["Species", "Count"]
-
-    fig_species = px.bar(
-        species_count,
-        x="Species",
-        y="Count",
-        title="Top 10 especioes"
-    )
-
-    st.plotly_chart(
-        fig_species,
-        use_container_width=True
-    )
-
-with col2:
-
-    status_count = (
-        filtered_df["status"]
-        .value_counts()
-        .reset_index()
-    )
-
-    status_count.columns = ["Status", "Count"]
-
-    fig_status = px.pie(
-    status_count,
-    names="Status",
-    values="Count",
-    color="Status",
-    color_discrete_map={
-        "Alive": "green",
-        "Dead": "red",
-        "unknown": "black"
+    color_map = {
+        "Alive": "#22c55e",
+        "Dead": "#ef4444",
+        "unknown": "#000000"
     }
-)
 
-    st.plotly_chart(
-        fig_status,
-        use_container_width=True
+    fig = px.bar(
+        status_dist,
+        x="status",
+        y="count",
+        color="status",
+        color_discrete_map=color_map,
+        title="Distribución por estado"
     )
 
-gender_count = (
-    filtered_df["gender"]
-    .value_counts()
-    .reset_index()
-)
+    st.plotly_chart(fig, use_container_width=True)
 
-gender_count.columns = ["Gender", "Count"]
+with tab2:
+    st.markdown('<div class="section-title">Galería de cartas</div>', unsafe_allow_html=True)
+    if total == 0:
+        st.warning("No hay resultados con los filtros actuales.")
+    else:
+        page_size = 12
+        page_count = max(1, (total + page_size - 1) // page_size)
+        page = st.number_input("Página", min_value=1, max_value=page_count, value=1, step=1)
+        start = (page - 1) * page_size
+        end = start + page_size
+        page_df = filtered.sort_values("name").iloc[start:end]
 
-fig_gender = px.bar(
-    gender_count,
-    x="Gender",
-    y="Count",
-    title="Distribución de géneros",
-    color="Gender"
-)
+        rows = [page_df.iloc[i:i+4] for i in range(0, len(page_df), 4)]
+        for row_df in rows:
+            cols = st.columns(4)
+            for idx, (_, r) in enumerate(row_df.iterrows()):
+                with cols[idx]:
+                    st.markdown(f"""
+                    <div class="card">
+                        <img src="{r['image']}" alt="{r['name']}">
+                        <div class="card-body">
+                            <div class="card-name">{r['name']}</div>
+                            <div class="badge {badge_class(r['status'])}">{r['status']}</div>
+                            <div class="meta"><b>Species:</b> {r['species']}</div>
+                            <div class="meta"><b>Gender:</b> {r['gender']}</div>
+                            <div class="meta"><b>Origin:</b> {r['origin']}</div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-st.plotly_chart(
-    fig_gender,
-    use_container_width=True
-)
+with tab3:
+    a, b = st.columns([1.15, 0.85])
+    with a:
+        top_species = filtered["species"].value_counts().head(10).reset_index()
+        top_species.columns = ["species", "count"]
+        fig_species = px.bar(
+            top_species,
+            x="species",
+            y="count",
+            color="species",
+            title="Top 10 especies"
+        )
+        st.plotly_chart(fig_species, use_container_width=True)
+    with b:
+        gender_dist = filtered["gender"].value_counts().reset_index()
+        gender_dist.columns = ["gender", "count"]
+        fig_gender = px.pie(
+            gender_dist,
+            names="gender",
+            values="count",
+            hole=0.5,
+            title="Distribución por género"
+        )
+        st.plotly_chart(fig_gender, use_container_width=True)
 
-st.divider()
+    c, d = st.columns(2)
+    with c:
+        st.markdown('<div class="section-title">Top ubicaciones</div>', unsafe_allow_html=True)
+        st.dataframe(filtered["location"].value_counts().head(10).reset_index(), use_container_width=True)
+    with d:
+        st.markdown('<div class="section-title">Top orígenes</div>', unsafe_allow_html=True)
+        st.dataframe(filtered["origin"].value_counts().head(10).reset_index(), use_container_width=True)
 
+with tab4:
+    st.markdown('<div class="section-title">Ficha del personaje</div>', unsafe_allow_html=True)
+    if total == 0:
+        st.info("Selecciona otros filtros para mostrar una ficha.")
+    else:
+        selected_name = st.selectbox("Selecciona un personaje", filtered["name"].sort_values().tolist())
+        person = filtered[filtered["name"] == selected_name].iloc[0]
+        l, r = st.columns([1, 1.8])
+        with l:
+            st.image(person["image"], use_container_width=True)
+        with r:
+            st.markdown(f"## {person['name']}")
+            st.markdown(f"<span class='badge {badge_class(person['status'])}'>{person['status']}</span>", unsafe_allow_html=True)
+            st.write(f"**Species:** {person['species']}")
+            st.write(f"**Type:** {person['type']}")
+            st.write(f"**Gender:** {person['gender']}")
+            st.write(f"**Origin:** {person['origin']}")
+            st.write(f"**Location:** {person['location']}")
+            st.write(f"**Episodes:** {int(person['n_episodes']) if 'n_episodes' in person else 'N/A'}")
+            st.write(f"**URL:** {person['url']}")
+            st.write(f"**Created:** {person['created']}")
 
-st.subheader("🔍 Explorador de personajes")
-
-character = st.selectbox(
-    "Choose a character",
-    filtered_df["name"].sort_values()
-)
-
-selected = filtered_df[
-    filtered_df["name"] == character
-].iloc[0]
-
-col1, col2 = st.columns([1,2])
-
-with col1:
-    st.image(
-        selected["image"],
-        width=300
-    )
-
-with col2:
-
-    st.markdown(f"## {selected['name']}")
-
-    st.write(f"**Status:** {selected['status']}")
-    st.write(f"**Species:** {selected['species']}")
-    st.write(f"**Gender:** {selected['gender']}")
-    st.write(f"**Origin:** {selected['origin']}")
-    st.write(f"**Location:** {selected['location']}")
-
-    if selected["type"]:
-        st.write(f"**Type:** {selected['type']}")
-
-st.divider()
-
-st.subheader("📋 Dataset")
-
-st.dataframe(
-    filtered_df,
-    use_container_width=True
-)
+st.write("")
+st.markdown('<div class="section-title">Dataset filtrado</div>', unsafe_allow_html=True)
+st.dataframe(filtered, use_container_width=True)
