@@ -1,5 +1,5 @@
 # Rick y Morty Api
-# MortyDex 🛸
+# 🛸Rick & Morty Dex 🛸
 
 Aplicación interactiva en Streamlit para explorar el universo de Rick & Morty a partir de un CSV local con 826 personajes.
 
