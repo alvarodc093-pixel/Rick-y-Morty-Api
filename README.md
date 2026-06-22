@@ -7,7 +7,7 @@ Aplicación interactiva en Streamlit para explorar el universo de Rick & Morty a
 
 ## Demo
 
-- **App desplegada:** https://TU-URL-DE-STREAMLIT
+- **App desplegada:** https://share.streamlit.io/
 
 ## Captura
 
